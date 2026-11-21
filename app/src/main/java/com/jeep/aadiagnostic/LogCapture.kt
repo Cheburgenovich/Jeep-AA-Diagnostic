@@ -79,7 +79,7 @@ object LogCapture {
                     BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
                         while (running.get()) {
                             val line = reader.readLine() ?: break
-                            val record = line + "\\n"
+                            val record = line + "\n"
                             val bytes = record.toByteArray(Charsets.UTF_8).size.toLong()
                             if (segmentBytes + bytes > SEGMENT_BYTES) {
                                 writer.flush()
@@ -99,7 +99,7 @@ object LogCapture {
                                         if (previous.exists()) previous.delete()
                                         matched.renameTo(previous)
                                     }
-                                    matched.appendText(line.take(4000) + "\\n")
+                                    matched.appendText(line.take(4000) + "\n")
                                 }
                             }
                             count++
