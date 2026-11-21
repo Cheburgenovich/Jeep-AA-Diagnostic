@@ -39,3 +39,19 @@ For a **complete Android bugreport** when the error occurs, use Android Develope
 - User markers are not automatically detected errors; keyword matches are only leads, not proof of a cause.
 - **Sensitive data:** raw logs and GNSS events may contain coordinates, network identifiers, tokens, messages, or personal data. Review before sharing, and **never upload diagnostic ZIP files to a public GitHub repository**.
 - Logs remain on the phone unless explicitly exported. Old logs remain until app data is cleared; a new continuous session overwrites `logcat-current.txt`, so export before starting another session if you need the old capture.
+
+## In-app updater (v3+)
+
+The **Check GitHub Updates** button fetches the latest **public GitHub Release**, not Actions artifacts. It requires an APK asset named `Jeep-AA-Diagnostic.apk` and checksum asset `Jeep-AA-Diagnostic.apk.sha256`. It verifies SHA-256, then asks Android to install; it never installs silently.
+
+**Release setup (one-time):**
+1. Generate and securely back up a dedicated Android release keystore offline. Do not commit it to Git.
+2. In GitHub repository Settings -> Secrets and variables -> Actions, set four repository secrets:
+   - `JEEP_KEYSTORE_BASE64`: base64 of the entire keystore file (single line).
+   - `JEEP_KEYSTORE_PASSWORD`: keystore password.
+   - `JEEP_KEY_ALIAS`: signing alias.
+   - `JEEP_KEY_PASSWORD`: key password.
+3. Push a tag `v3` on the intended commit to trigger the signed release build; subsequent updates use `v4`, `v5`, etc. The workflow deliberately refuses to publish without all signing secrets.
+4. Install the first **release-signed** APK manually from Releases. **It cannot install over the earlier debug-signed APK** because the signing certificate differs. Export logs before uninstalling the debug version. After the one-time transition, updates can install over prior release-signed versions.
+
+**Do not lose the signing keystore:** replacing it will break upgrades over already installed releases. The public repository is needed for unauthenticated update checks. For a private repository, the current updater will not work without a different authenticated distribution method.
