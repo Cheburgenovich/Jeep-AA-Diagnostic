@@ -55,3 +55,7 @@ The **Check GitHub Updates** button fetches the latest **public GitHub Release**
 4. Install the first **release-signed** APK manually from Releases. **It cannot install over the earlier debug-signed APK** because the signing certificate differs. Export logs before uninstalling the debug version. After the one-time transition, updates can install over prior release-signed versions.
 
 **Do not lose the signing keystore:** replacing it will break upgrades over already installed releases. The public repository is needed for unauthenticated update checks. For a private repository, the current updater will not work without a different authenticated distribution method.
+
+## Version 4 UI
+The phone screen now has a monitoring status panel, a single Start/Stop button, connection method selector (USB cable / wireless SmartBox / other), start/success/error markers, clock-change note, ZIP export, update check and a collapsible event log. Attempt/error/success counts are shown. Monitoring is still started manually to comply with Android foreground service restrictions; after that, location/network/time capture and accessible logcat are automatic. ADB remains optional.
+The displayed version is sourced from BuildConfig.VERSION_NAME to avoid stale hardcoded labels. To publish this update, push tag `v4` to the intended tested commit and verify the signed release workflow completes successfully.
