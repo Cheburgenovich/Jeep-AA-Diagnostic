@@ -2,9 +2,10 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,9 +25,41 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Build APK
+      - name: Build debug APK for testing
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         with:
           name: Jeep-AA-Diagnostic-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      - name: Validate signing secrets
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          KEYSTORE_B64: ${{ secrets.JEEP_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.JEEP_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.JEEP_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.JEEP_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" && test -n "$STORE_PASS" && test -n "$KEY_ALIAS" && test -n "$KEY_PASS" || { echo "::error::Configure release signing secrets before publishing"; exit 1; }
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/jeep-release.jks"
+          echo "JEEP_KEYSTORE_PATH=$RUNNER_TEMP/jeep-release.jks" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          JEEP_KEYSTORE_PASSWORD: ${{ secrets.JEEP_KEYSTORE_PASSWORD }}
+          JEEP_KEY_ALIAS: ${{ secrets.JEEP_KEY_ALIAS }}
+          JEEP_KEY_PASSWORD: ${{ secrets.JEEP_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="${GITHUB_REF_NAME#v}"
+          [[ "$code" =~ ^[0-9]+$ ]] || { echo "Tag must be v followed by integer"; exit 1; }
+          gradle --no-daemon :app:assembleRelease -PreleaseCode="$code" -PreleaseName="$code"
+          cp app/build/outputs/apk/release/app-release.apk Jeep-AA-Diagnostic.apk
+          sha256sum Jeep-AA-Diagnostic.apk > Jeep-AA-Diagnostic.apk.sha256
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" Jeep-AA-Diagnostic.apk Jeep-AA-Diagnostic.apk.sha256 --title "Jeep AA Diagnostic $GITHUB_REF_NAME" --generate-notes --verify-tag
