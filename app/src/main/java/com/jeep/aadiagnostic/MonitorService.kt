@@ -27,9 +27,9 @@ class MonitorService : Service() {
             val jump = (w - wall) - (e - elapsed)
             if (kotlin.math.abs(jump) > 1500) EventStore.log(this@MonitorService, "CLOCK_JUMP", "delta_ms=$jump")
             wall = w; elapsed = e
-            if (e - lastTimeSnapshot >= 30000L) {
+            if (e - lastTimeSnapshot >= 5000L) {
                 lastTimeSnapshot = e
-                Diagnostics.capture(this@MonitorService, "PERIODIC_30S")
+                Diagnostics.capture(this@MonitorService, "PERIODIC_5S")
             }
             val z = TimeZone.getDefault().id
             if (z != zone) { EventStore.log(this@MonitorService, "TIMEZONE", "$zone -> $z"); zone = z }
