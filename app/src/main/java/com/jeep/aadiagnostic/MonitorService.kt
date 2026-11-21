@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.*
 import android.net.*
 import android.os.*
+import android.hardware.usb.UsbManager
 import java.util.TimeZone
 
 class MonitorService : Service() {
@@ -36,6 +37,11 @@ class MonitorService : Service() {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             EventStore.log(context, "SYSTEM_EVENT", intent.action ?: "unknown")
+            if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED || intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED ||
+                intent.action == UsbManager.ACTION_USB_ACCESSORY_ATTACHED || intent.action == UsbManager.ACTION_USB_ACCESSORY_DETACHED) {
+                EventStore.log(context, "AUTO_USB_BROADCAST", "signal_only;action=${intent.action}")
+                Diagnostics.capture(context, "USB_CHANGE")
+            }
             if (intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED || intent.action == Intent.ACTION_DATE_CHANGED) Diagnostics.capture(context, intent.action ?: "TIME_EVENT")
         }
     }
@@ -73,6 +79,10 @@ class MonitorService : Service() {
             addAction(Intent.ACTION_TIME_CHANGED); addAction(Intent.ACTION_TIMEZONE_CHANGED)
             addAction(Intent.ACTION_DATE_CHANGED); addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
+            addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
         }
         registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
