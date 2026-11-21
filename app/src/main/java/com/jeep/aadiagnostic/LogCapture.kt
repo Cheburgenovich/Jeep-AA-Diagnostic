@@ -22,8 +22,8 @@ object LogCapture {
     private val failureSignal = Regex("authenticat.*(fail|error|reject)|certificat.*(fail|invalid|expir)|handshake.*(fail|error)|securityexception|clock.?skew|communication error|error.?8|projection.*(fail|disconnect|error)", RegexOption.IGNORE_CASE)
     private val successSignal = Regex("(projection|android.?auto|gearhead).{0,100}(connected|established|started|active)", RegexOption.IGNORE_CASE)
     private val lastSignal = mutableMapOf<String, Long>()
-    private val authFailure = Regex("PROTOCOL_AUTH_FAILED_BY_CAR\\\\(8\\\\)|AUTH_FAILED_BY_CAR\\\\(44\\\\)|Remote auth failure", RegexOption.IGNORE_CASE)
-    private val ioFailure = Regex("PROTOCOL_IO_ERROR\\\\(3\\\\)", RegexOption.IGNORE_CASE)
+    private val authFailure = Regex("""PROTOCOL_AUTH_FAILED_BY_CAR\(8\)|AUTH_FAILED_BY_CAR\(44\)|Remote auth failure""", RegexOption.IGNORE_CASE)
+    private val ioFailure = Regex("""PROTOCOL_IO_ERROR\(3\)""", RegexOption.IGNORE_CASE)
     private val versionOk = Regex("VERSION_NEGOTIATION_SUCCESS_USB", RegexOption.IGNORE_CASE)
     private val sslFailure = Regex("SSL_FAILED", RegexOption.IGNORE_CASE)
     private fun infer(context: Context, line: String) {
