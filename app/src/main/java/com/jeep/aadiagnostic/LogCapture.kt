@@ -22,8 +22,16 @@ object LogCapture {
     private val failureSignal = Regex("authenticat.*(fail|error|reject)|certificat.*(fail|invalid|expir)|handshake.*(fail|error)|securityexception|clock.?skew|communication error|error.?8|projection.*(fail|disconnect|error)", RegexOption.IGNORE_CASE)
     private val successSignal = Regex("(projection|android.?auto|gearhead).{0,100}(connected|established|started|active)", RegexOption.IGNORE_CASE)
     private val lastSignal = mutableMapOf<String, Long>()
+    private val authFailure = Regex("PROTOCOL_AUTH_FAILED_BY_CAR\\\\(8\\\\)|AUTH_FAILED_BY_CAR\\\\(44\\\\)|Remote auth failure", RegexOption.IGNORE_CASE)
+    private val ioFailure = Regex("PROTOCOL_IO_ERROR\\\\(3\\\\)", RegexOption.IGNORE_CASE)
+    private val versionOk = Regex("VERSION_NEGOTIATION_SUCCESS_USB", RegexOption.IGNORE_CASE)
+    private val sslFailure = Regex("SSL_FAILED", RegexOption.IGNORE_CASE)
     private fun infer(context: Context, line: String) {
         val type = when {
+            authFailure.containsMatchIn(line) -> "AUTO_AUTH_FAILED_BY_CAR"
+            ioFailure.containsMatchIn(line) -> "AUTO_PROTOCOL_IO_ERROR"
+            versionOk.containsMatchIn(line) -> "AUTO_USB_VERSION_NEGOTIATED"
+            sslFailure.containsMatchIn(line) && projectionSignal.containsMatchIn(line) -> "AUTO_SSL_FAILED"
             projectionSignal.containsMatchIn(line) && failureSignal.containsMatchIn(line) -> "AUTO_POSSIBLE_AA_FAILURE"
             successSignal.containsMatchIn(line) -> "AUTO_POSSIBLE_AA_SUCCESS"
             usbSignal.containsMatchIn(line) -> "AUTO_USB_SIGNAL"
@@ -33,7 +41,7 @@ object LogCapture {
         // Limit duplicated vendor log spam while keeping raw logcat unchanged.
         val allowed = synchronized(lastSignal) {
             val last = lastSignal[type] ?: 0L
-            if (now - last < 10000L) false else { lastSignal[type] = now; true }
+            if (now - last < 2000L) false else { lastSignal[type] = now; true }
         }
         if (allowed) EventStore.log(context, type, "heuristic_only; " + line.take(900))
     }
