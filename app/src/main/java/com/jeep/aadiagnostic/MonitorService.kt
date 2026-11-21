@@ -63,6 +63,7 @@ class MonitorService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onCreate() {
         super.onCreate()
+        getSharedPreferences("ui", MODE_PRIVATE).edit().putBoolean("monitoring", true).apply()
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(NotificationChannel("monitor", "AA Diagnostics", NotificationManager.IMPORTANCE_LOW))
         val pending = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -91,6 +92,7 @@ class MonitorService : Service() {
         runCatching { lm.unregisterGnssStatusCallback(gnssCallback) }
         LogCapture.stop(this)
         Diagnostics.capture(this, "SESSION_STOP")
+        getSharedPreferences("ui", MODE_PRIVATE).edit().putBoolean("monitoring", false).apply()
         EventStore.log(this, "SESSION_STOP")
         super.onDestroy()
     }
