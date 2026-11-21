@@ -46,6 +46,7 @@ class MainActivity : Activity() {
                 .setNegativeButton("Отмена",null).show()
         }
         button("Экспортировать полный ZIP") { exportZip() }
+        button("Проверить обновления с GitHub") { AppUpdater.check(this) }
         button("Проверить доступ к системным журналам") { logcatHelp() }
         button("Обновить журнал") { refresh() }
         root.addView(TextView(this).apply {
