@@ -19,6 +19,7 @@ class MonitorService : Service() {
     private var zone = TimeZone.getDefault().id
     private var network = ""
     private var gnssLast = 0L
+    private var lastTimeSnapshot = 0L
     private val tick = object : Runnable {
         override fun run() {
             val w = System.currentTimeMillis()
@@ -26,6 +27,10 @@ class MonitorService : Service() {
             val jump = (w - wall) - (e - elapsed)
             if (kotlin.math.abs(jump) > 1500) EventStore.log(this@MonitorService, "CLOCK_JUMP", "delta_ms=$jump")
             wall = w; elapsed = e
+            if (e - lastTimeSnapshot >= 30000L) {
+                lastTimeSnapshot = e
+                Diagnostics.capture(this@MonitorService, "PERIODIC_30S")
+            }
             val z = TimeZone.getDefault().id
             if (z != zone) { EventStore.log(this@MonitorService, "TIMEZONE", "$zone -> $z"); zone = z }
             val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
