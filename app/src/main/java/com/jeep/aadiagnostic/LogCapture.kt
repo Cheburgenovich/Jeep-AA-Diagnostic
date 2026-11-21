@@ -45,7 +45,10 @@ object LogCapture {
         }
         if (allowed) EventStore.log(context, type, "heuristic_only; " + line.take(900))
     }
-    private const val MAX_BYTES = 24L * 1024 * 1024
+    // Bounded rotating capture: 8 x 8 MiB, oldest segments are replaced.
+    private const val SEGMENT_BYTES = 8L * 1024 * 1024
+    private const val SEGMENT_COUNT = 8
+    private const val MATCHED_BYTES = 8L * 1024 * 1024
     private val keywords = Regex("android.?auto|gearhead|projection|carservice|car.?error|authenticat|certificat|ssl|tls|securityexception|usb|uconnect|smartbox|time.?sync|clock.?skew|handshake", RegexOption.IGNORE_CASE)
 
     fun hasPermission(context: Context): Boolean =
@@ -62,33 +65,52 @@ object LogCapture {
         val app = context.applicationContext
         worker = Thread({
             val dir = File(app.filesDir, "sessions").apply { mkdirs() }
-            val full = File(dir, "logcat-current.txt")
             val matched = File(dir, "logcat-matches.txt")
             try {
-                EventStore.log(app, "LOGCAT_START", "continuous; accessible buffers; max 24 MiB")
+                EventStore.log(app, "LOGCAT_START", "continuous rotating 8 x 8 MiB; matched 8 MiB")
                 val p = ProcessBuilder("logcat", "-v", "threadtime", "-b", "main", "-b", "system", "-b", "events", "-T", "1")
                     .redirectErrorStream(true).start()
                 process = p
-                BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
-                    full.bufferedWriter().use { writer ->
-                        var count = 0
+                var segment = 0
+                var segmentBytes = 0L
+                var count = 0
+                var writer = File(dir, "logcat-part-%02d.txt".format(segment)).bufferedWriter()
+                try {
+                    BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
                         while (running.get()) {
                             val line = reader.readLine() ?: break
-                            writer.appendLine(line)
+                            val record = line + "\\n"
+                            val bytes = record.toByteArray(Charsets.UTF_8).size.toLong()
+                            if (segmentBytes + bytes > SEGMENT_BYTES) {
+                                writer.flush()
+                                writer.close()
+                                segment = (segment + 1) % SEGMENT_COUNT
+                                writer = File(dir, "logcat-part-%02d.txt".format(segment)).bufferedWriter()
+                                segmentBytes = 0L
+                                EventStore.log(app, "LOGCAT_ROTATE", "segment=$segment; maxSegments=$SEGMENT_COUNT")
+                            }
+                            writer.write(record)
+                            segmentBytes += bytes
                             infer(app, line)
                             if (keywords.containsMatchIn(line)) {
-                                synchronized(this) { matched.appendText(line.take(4000) + "\n") }
+                                synchronized(this) {
+                                    if (matched.exists() && matched.length() > MATCHED_BYTES) {
+                                        val previous = File(dir, "logcat-matches-previous.txt")
+                                        if (previous.exists()) previous.delete()
+                                        matched.renameTo(previous)
+                                    }
+                                    matched.appendText(line.take(4000) + "\\n")
+                                }
                             }
                             count++
                             if (count % 100 == 0) writer.flush()
-                            if (full.length() > MAX_BYTES) {
-                                EventStore.log(app, "LOGCAT_LIMIT", "24 MiB reached; capture stopped to protect storage")
-                                break
-                            }
                         }
                     }
+                } finally {
+                    writer.flush()
+                    writer.close()
                 }
-                EventStore.log(app, "LOGCAT_EXIT", "exit_or_end; bytes=${full.length()}")
+                EventStore.log(app, "LOGCAT_EXIT", "exit_or_end;lines=$count;segment=$segment")
             } catch (e: Exception) {
                 EventStore.log(app, "LOGCAT_ERROR", e.toString())
             } finally {
