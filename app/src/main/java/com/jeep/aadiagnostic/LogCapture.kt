@@ -17,6 +17,26 @@ object LogCapture {
     private val running = AtomicBoolean(false)
     @Volatile private var process: Process? = null
     @Volatile private var worker: Thread? = null
+    private val usbSignal = Regex("UsbDeviceManager|UsbPortManager|UsbAccessory|UsbHostManager|usb.*(attach|detach|connect|disconnect)|accessory.*(attach|detach)", RegexOption.IGNORE_CASE)
+    private val projectionSignal = Regex("gearhead|android.?auto|projection|carservice", RegexOption.IGNORE_CASE)
+    private val failureSignal = Regex("authenticat.*(fail|error|reject)|certificat.*(fail|invalid|expir)|handshake.*(fail|error)|securityexception|clock.?skew|communication error|error.?8|projection.*(fail|disconnect|error)", RegexOption.IGNORE_CASE)
+    private val successSignal = Regex("(projection|android.?auto|gearhead).{0,100}(connected|established|started|active)", RegexOption.IGNORE_CASE)
+    private val lastSignal = mutableMapOf<String, Long>()
+    private fun infer(context: Context, line: String) {
+        val type = when {
+            projectionSignal.containsMatchIn(line) && failureSignal.containsMatchIn(line) -> "AUTO_POSSIBLE_AA_FAILURE"
+            successSignal.containsMatchIn(line) -> "AUTO_POSSIBLE_AA_SUCCESS"
+            usbSignal.containsMatchIn(line) -> "AUTO_USB_SIGNAL"
+            else -> null
+        } ?: return
+        val now = SystemClock.elapsedRealtime()
+        // Limit duplicated vendor log spam while keeping raw logcat unchanged.
+        val allowed = synchronized(lastSignal) {
+            val last = lastSignal[type] ?: 0L
+            if (now - last < 10000L) false else { lastSignal[type] = now; true }
+        }
+        if (allowed) EventStore.log(context, type, "heuristic_only; " + line.take(900))
+    }
     private const val MAX_BYTES = 24L * 1024 * 1024
     private val keywords = Regex("android.?auto|gearhead|projection|carservice|car.?error|authenticat|certificat|ssl|tls|securityexception|usb|uconnect|smartbox|time.?sync|clock.?skew|handshake", RegexOption.IGNORE_CASE)
 
@@ -47,6 +67,7 @@ object LogCapture {
                         while (running.get()) {
                             val line = reader.readLine() ?: break
                             writer.appendLine(line)
+                            infer(app, line)
                             if (keywords.containsMatchIn(line)) {
                                 synchronized(this) { matched.appendText(line.take(4000) + "\n") }
                             }
