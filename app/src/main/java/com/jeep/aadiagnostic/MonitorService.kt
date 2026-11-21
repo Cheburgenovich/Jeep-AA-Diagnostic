@@ -36,6 +36,7 @@ class MonitorService : Service() {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             EventStore.log(context, "SYSTEM_EVENT", intent.action ?: "unknown")
+            if (intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED || intent.action == Intent.ACTION_DATE_CHANGED) Diagnostics.capture(context, intent.action ?: "TIME_EVENT")
         }
     }
     private val locationListener = object : LocationListener {
@@ -79,6 +80,8 @@ class MonitorService : Service() {
             runCatching { lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 15000L, 0f, locationListener, Looper.getMainLooper()) }
             runCatching { lm.registerGnssStatusCallback(gnssCallback, handler) }
         } else EventStore.log(this, "LOCATION_PERMISSION_MISSING")
+        Diagnostics.capture(this, "SESSION_START")
+        LogCapture.start(this)
         handler.post(tick)
     }
     override fun onDestroy() {
@@ -86,6 +89,8 @@ class MonitorService : Service() {
         runCatching { unregisterReceiver(receiver) }
         runCatching { lm.removeUpdates(locationListener) }
         runCatching { lm.unregisterGnssStatusCallback(gnssCallback) }
+        LogCapture.stop(this)
+        Diagnostics.capture(this, "SESSION_STOP")
         EventStore.log(this, "SESSION_STOP")
         super.onDestroy()
     }
