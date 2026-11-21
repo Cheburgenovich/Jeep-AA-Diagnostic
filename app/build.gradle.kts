@@ -2,12 +2,13 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "com.jeep.aadiagnostic"
     compileSdk = 35
+    buildFeatures { buildConfig = true }
     defaultConfig {
         applicationId = "com.jeep.aadiagnostic"
         minSdk = 29
         targetSdk = 35
-        versionCode = providers.gradleProperty("releaseCode").orNull?.toIntOrNull() ?: 3
-        versionName = providers.gradleProperty("releaseName").orNull ?: "3.0"
+        versionCode = providers.gradleProperty("releaseCode").orNull?.toIntOrNull() ?: 4
+        versionName = providers.gradleProperty("releaseName").orNull ?: "4.0"
     }
     signingConfigs {
         create("githubRelease") {
