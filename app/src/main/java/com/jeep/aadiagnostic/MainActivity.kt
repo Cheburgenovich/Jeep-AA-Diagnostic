@@ -92,10 +92,10 @@ class MainActivity : Activity() {
 
         val test = section(root, "Автоматическая диагностика")
         test.addView(label("Мониторинг автоматически сохраняет доступные системные журналы, изменения USB, сети и времени. Обнаруженные признаки сбоев не означают подтверждённую ошибку 8.", 14f, muted))
-        button(manualPanel, "Показать / скрыть ручные отметки", muted) {
+        manualPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        button(test, "Показать / скрыть ручные отметки", muted) {
             manualPanel.visibility = if (manualPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
-        manualPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         test.addView(manualPanel)
         manualPanel.addView(label("Ручные отметки необязательны.", 13f, muted).apply { setPadding(0, 0, 0, 8) })
         mode = Spinner(this)
