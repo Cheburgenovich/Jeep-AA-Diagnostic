@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     private lateinit var monitorButton: Button
     private lateinit var details: LinearLayout
     private lateinit var mode: Spinner
+    private lateinit var manualPanel: LinearLayout
     private val handler = Handler(Looper.getMainLooper())
     private val prefs by lazy { getSharedPreferences("ui", MODE_PRIVATE) }
     private val navy = Color.rgb(17, 32, 49)
@@ -89,19 +90,25 @@ class MainActivity : Activity() {
         monitorButton = button(stateCard, "Начать мониторинг", green) { toggleMonitoring() }
         button(stateCard, "Разрешения GPS и уведомлений") { permissions() }
 
-        val test = section(root, "Проверка подключения")
-        test.addView(label("1. Запусти мониторинг. 2. Отметь попытку. 3. Выбери результат.", 13f, muted).apply { setPadding(0, 0, 0, 8) })
+        val test = section(root, "Автоматическая диагностика")
+        test.addView(label("Мониторинг автоматически сохраняет доступные системные журналы, изменения USB, сети и времени. Обнаруженные признаки сбоев не означают подтверждённую ошибку 8.", 14f, muted))
+        button(manualPanel, "Показать / скрыть ручные отметки", muted) {
+            manualPanel.visibility = if (manualPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
+        manualPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        test.addView(manualPanel)
+        manualPanel.addView(label("Ручные отметки необязательны.", 13f, muted).apply { setPadding(0, 0, 0, 8) })
         mode = Spinner(this)
         val modes = arrayOf("USB-кабель", "Беспроводной SmartBox", "Другой способ")
         mode.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
         mode.setSelection(prefs.getInt("mode", 0).coerceIn(0, 2))
-        test.addView(mode)
-        button(test, "▶ Начать попытку подключения") { mark("AA_ATTEMPT_START") }
-        button(test, "✓ Android Auto подключился", green) { mark("AA_SUCCESS") }
-        button(test, "✕ Ошибка Android Auto 8", red) { mark("AA_ERROR_8") }
-        button(test, "Другая ошибка", muted) { mark("AA_OTHER_ERROR") }
-        button(test, "Часы Uconnect изменились", muted) { clockNote() }
-        button(test, "Добавить заметку", muted) { note() }
+        manualPanel.addView(mode)
+        button(manualPanel, "▶ Начать попытку подключения") { mark("AA_ATTEMPT_START") }
+        button(manualPanel, "✓ Android Auto подключился", green) { mark("AA_SUCCESS") }
+        button(manualPanel, "✕ Ошибка Android Auto 8", red) { mark("AA_ERROR_8") }
+        button(manualPanel, "Другая ошибка", muted) { mark("AA_OTHER_ERROR") }
+        button(manualPanel, "Часы Uconnect изменились", muted) { clockNote() }
+        button(manualPanel, "Добавить заметку", muted) { note() }
 
         val files = section(root, "Данные и обновления")
         button(files, "Экспортировать диагностику ZIP") { exportZip() }
@@ -218,7 +225,7 @@ class MainActivity : Activity() {
                         output.closeEntry()
                     }
                     output.putNextEntry(ZipEntry("README.txt"))
-                    output.write("Jeep AA Diagnostic ${BuildConfig.VERSION_NAME}\nExported ${Instant.now()}\nMarkers are entered by the user. Contains potentially sensitive device data.\n".toByteArray())
+                    output.write("Jeep AA Diagnostic ${BuildConfig.VERSION_NAME}\nExported ${Instant.now()}\nAutomatic signals are heuristic, not confirmed error 8. Manual markers are user-entered. Contains potentially sensitive device data.\n".toByteArray())
                     output.closeEntry()
                 }
                 val uri: Uri = FileProvider.getUriForFile(this, "$packageName.provider", zip)
