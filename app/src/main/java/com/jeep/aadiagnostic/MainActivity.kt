@@ -80,7 +80,7 @@ class MainActivity : Activity() {
             setPadding(18.dp(), 18.dp(), 18.dp(), 24.dp())
             setBackgroundColor(Color.rgb(244, 247, 250))
         }
-        setContentView(ScrollView(this).apply { fillViewport = true; addView(root) })
+        setContentView(ScrollView(this).apply { isFillViewport = true; addView(root) })
         root.addView(label("Jeep AA Diagnostic", 26f, navy, true))
         root.addView(label("Версия ${BuildConfig.VERSION_NAME} · Android Auto / Uconnect", 13f, muted))
         val stateCard = section(root, "Состояние диагностики")
