@@ -219,13 +219,13 @@ class MainActivity : Activity() {
                 val dir = File(cacheDir, "exports").apply { mkdirs() }
                 val zip = File(dir, "jeep-aa-v${BuildConfig.VERSION_NAME}-${System.currentTimeMillis()}.zip")
                 ZipOutputStream(FileOutputStream(zip)).use { output ->
-                    File(filesDir, "sessions").listFiles()?.filter { it.isFile && it.length() <= 30L * 1024 * 1024 }?.forEach { file ->
+                    File(filesDir, "sessions").listFiles()?.filter { it.isFile && it.length() <= 100L * 1024 * 1024 }?.forEach { file ->
                         output.putNextEntry(ZipEntry(file.name))
                         file.inputStream().use { it.copyTo(output) }
                         output.closeEntry()
                     }
                     output.putNextEntry(ZipEntry("README.txt"))
-                    output.write("Jeep AA Diagnostic ${BuildConfig.VERSION_NAME}\nExported ${Instant.now()}\nAutomatic signals are heuristic, not confirmed error 8. Manual markers are user-entered. Contains potentially sensitive device data.\n".toByteArray())
+                    output.write("Jeep AA Diagnostic ${BuildConfig.VERSION_NAME}\nExported ${Instant.now()}\nError codes are extracted from phone Logcat; transport evidence can be inferred and may be uncertain. Internal Uconnect clock is NOT readable. Rotating logs retain recent data only. Contains potentially sensitive device data, locations and identifiers.\n".toByteArray())
                     output.closeEntry()
                 }
                 val uri: Uri = FileProvider.getUriForFile(this, "$packageName.provider", zip)
